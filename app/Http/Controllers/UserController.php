@@ -32,9 +32,11 @@ public function update(Request $request, $id)
     }
 
     $request->validate([
-        'username' => 'required|string|max:255',
+        'username' => 'required|string|max:255|unique:users,username,' . $id,
         'role' => 'required|in:administrator,quarter master',
         'status' => 'required|in:active,inactive',
+    ], [
+        'username.unique' => 'This username is already taken. Please choose another one.',
     ]);
 
     $user->update($request->only('username', 'role', 'status'));

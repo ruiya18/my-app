@@ -16,10 +16,12 @@ class MemberController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'username' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:members,username',
             'password' => 'required|string|min:6',
             'role' => 'required|in:student,teacher',
             'status' => 'required|in:active,inactive',
+        ], [
+            'username.unique' => 'This username is already taken. Please choose another one.',
         ]);
 
          $member = Member::create([
@@ -50,9 +52,11 @@ public function update(Request $request, $id)
     }
 
     $request->validate([
-        'username' => 'required|string|max:255',
+        'username' => 'required|string|max:255|unique:members,username,' . $id,
         'role' => 'required|string',
         'status' => 'required|string',
+    ], [
+        'username.unique' => 'This username is already taken. Please choose another one.',
     ]);
 
     $member->update($request->all());

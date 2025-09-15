@@ -13,10 +13,12 @@ class AuthController extends Controller
      public function register(Request $request)
     {
         $request->validate([
-            'username' => 'required|unique:users',
+            'username' => 'required|string|max:255|unique:users,username',
             'password' => 'required|min:6',
             'role' => 'required|in:administrator,quarter master',
             'status' => 'required|in:active,inactive',
+        ], [
+            'username.unique' => 'This username is already taken. Please choose another one.',
         ]);
 
         $user = User::create([

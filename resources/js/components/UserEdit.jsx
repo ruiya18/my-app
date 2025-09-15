@@ -48,8 +48,16 @@ const UserEdit = () => {
       setMessage("User updated successfully.");
       navigate("/user-list"); // Redirect after success
     } catch (err) {
-      console.error("Error updating user:", err);
-      setMessage("Failed to update user.");
+      if (err.response && err.response.status === 422) {
+        const errors = err.response.data.errors;
+        if (errors.username) {
+          setMessage(errors.username[0]);
+        } else {
+          setMessage('Validation error. Please check the form.');
+        }
+      } else {
+        setMessage('Failed to update user. Please try again.');
+      }
     }
   };
 

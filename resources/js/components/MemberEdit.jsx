@@ -48,8 +48,16 @@ const MemberEdit = () => {
       setMessage("Member updated successfully.");
       setTimeout(() => navigate("/member-list"), 1000);
     } catch (err) {
-      console.error("Error updating member:", err);
-      setMessage("Failed to update member.");
+      if (err.response && err.response.status === 422) {
+        const errors = err.response.data.errors;
+        if (errors.username) {
+          setMessage(errors.username[0]);
+        } else {
+          setMessage('Validation error. Please check the form.');
+        }
+      } else {
+        setMessage('Failed to update member. Please try again.');
+      }
     }
   };
 
@@ -80,7 +88,7 @@ const MemberEdit = () => {
               className="w-full border rounded p-2"
             >
               <option value="member">Teacher</option>
-              <option value="admin">Student</option>
+              <option value="student">Student</option>
             </select>
           </div>
 

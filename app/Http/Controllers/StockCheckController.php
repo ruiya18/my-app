@@ -19,13 +19,11 @@ class StockCheckController extends Controller
             'items' => 'required|array',
         ]);
 
-        $stockCheck = StockCheck::create($validated);
-
-            $check = StockCheck::create([
-        'date' => $request->date,
-        'outlet' => $request->outlet,
-        'items' => $request->items,
-    ]);
+        $check = StockCheck::create([
+            'date' => $request->date,
+            'outlet' => $request->outlet,
+            'items' => $request->items,
+        ]);
 
     foreach ($request->items as $productId => $data) {
         $inventory = Inventory::where('product_id', $productId)->first();

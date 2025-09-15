@@ -35,8 +35,16 @@ const handleSubmit = async (e) => {
     // Redirect to user list after successful submission
     navigate('/user-list');
   } catch (err) {
-    console.error("Error creating user:", err);
-    setMessage('Error creating user');
+    if (err.response && err.response.status === 422) {
+      const errors = err.response.data.errors;
+      if (errors.username) {
+        setMessage(errors.username[0]);
+      } else {
+        setMessage('Validation error. Please check the form.');
+      }
+    } else {
+      setMessage('Failed to add user. Please try again.');
+    }
   }
 };
 

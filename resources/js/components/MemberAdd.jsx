@@ -41,8 +41,16 @@ const MemberAdd = ({ onMemberAdded }) => {
       // Optional: navigate to member list
       // navigate('/member-list');
     } catch (err) {
-      console.error(err);
-      setMessage('Error adding member');
+      if (err.response && err.response.status === 422) {
+        const errors = err.response.data.errors;
+        if (errors.username) {
+          setMessage(errors.username[0]);
+        } else {
+          setMessage('Validation error. Please check the form.');
+        }
+      } else {
+        setMessage('Failed to add member. Please try again.');
+      }
     }
   };
 
