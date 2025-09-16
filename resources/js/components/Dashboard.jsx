@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Bar, Doughnut } from 'react-chartjs-2';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   BarElement,
@@ -8,6 +8,8 @@ import {
   Tooltip,
   Legend,
   ArcElement,
+  PointElement,
+  LineElement
 } from 'chart.js';
 import axios from 'axios';
 
@@ -17,7 +19,9 @@ ChartJS.register(
   LinearScale,
   Tooltip,
   Legend,
-  ArcElement
+  ArcElement,
+  PointElement,
+  LineElement
 );
 
 export default function Dashboard() {
@@ -28,11 +32,20 @@ export default function Dashboard() {
     total_members: 0
   });
 
-  const [weeklyBookingLabels, setWeeklyBookingLabels] = useState([]);
-  const [weeklyBookingData, setWeeklyBookingData] = useState([]);
+  const [bookingRange, setBookingRange] = useState('7days');
+  const [reservationRange, setReservationRange] = useState('7days');
+  
+  const [bookingData, setBookingData] = useState({
+    labels: [],
+    data: [],
+    type: 'line'
+  });
 
-  const [weeklyReservationLabels, setWeeklyReservationLabels] = useState([]);
-  const [weeklyReservationData, setWeeklyReservationData] = useState([]);
+  const [reservationData, setReservationData] = useState({
+    labels: [],
+    data: [],
+    type: 'line'
+  });
 
   const [equipmentStatus, setEquipmentStatus] = useState({
     instock: 0,
@@ -40,45 +53,76 @@ export default function Dashboard() {
     missing: 0
   });
 
+  const fetchBookingData = async (range) => {
+    try {
+      const resp = await axios.get(`/api/weekly-bookings?range=${range}`);
+      setBookingData({
+        labels: resp.data.labels,
+        data: resp.data.data,
+        type: range === 'today' || range === 'yesterday' ? 'bar' : 'line'
+      });
+    } catch (error) {
+      console.error('Error fetching booking data:', error);
+    }
+  };
+
+  const fetchReservationData = async (range) => {
+    try {
+      const resp = await axios.get(`/api/weekly-reservations?range=${range}`);
+      setReservationData({
+        labels: resp.data.labels,
+        data: resp.data.data,
+        type: range === 'today' || range === 'yesterday' ? 'bar' : 'line'
+      });
+    } catch (error) {
+      console.error('Error fetching reservation data:', error);
+    }
+  };
+
   useEffect(() => {
     axios.get('/api/dashboard-stats')
       .then(resp => setStats(resp.data))
       .catch(console.error);
 
-    axios.get('/api/weekly-bookings')
-      .then(resp => {
-        setWeeklyBookingLabels(resp.data.labels);
-        setWeeklyBookingData(resp.data.data);
-      })
-      .catch(console.error);
-
-    axios.get('/api/weekly-reservations')
-      .then(resp => {
-        setWeeklyReservationLabels(resp.data.labels);
-        setWeeklyReservationData(resp.data.data);
-      })
-      .catch(console.error);
-
     axios.get('/api/inventory-summary')
       .then(resp => setEquipmentStatus(resp.data))
       .catch(console.error);
+
+    fetchBookingData(bookingRange);
+    fetchReservationData(reservationRange);
   }, []);
 
-  const bookingBarData = {
-    labels: weeklyBookingLabels,
+  useEffect(() => {
+    fetchBookingData(bookingRange);
+  }, [bookingRange]);
+
+  useEffect(() => {
+    fetchReservationData(reservationRange);
+  }, [reservationRange]);
+
+  const bookingChartData = {
+    labels: bookingData.labels,
     datasets: [{
       label: 'Bookings',
-      data: weeklyBookingData,
-      backgroundColor: 'rgba(59,130,246,0.6)',
+      data: bookingData.data,
+      backgroundColor: bookingData.type === 'bar' ? 'rgba(59,130,246,0.6)' : 'rgba(59,130,246,0.2)',
+      borderColor: 'rgba(59,130,246,1)',
+      borderWidth: 2,
+      fill: bookingData.type === 'line',
+      tension: 0.4
     }],
   };
 
-  const reservationBarData = {
-    labels: weeklyReservationLabels,
+  const reservationChartData = {
+    labels: reservationData.labels,
     datasets: [{
       label: 'Reservations',
-      data: weeklyReservationData,
-      backgroundColor: 'rgba(16,185,129,0.6)',
+      data: reservationData.data,
+      backgroundColor: reservationData.type === 'bar' ? 'rgba(16,185,129,0.6)' : 'rgba(16,185,129,0.2)',
+      borderColor: 'rgba(16,185,129,1)',
+      borderWidth: 2,
+      fill: reservationData.type === 'line',
+      tension: 0.4
     }],
   };
 
@@ -94,6 +138,43 @@ export default function Dashboard() {
     }],
   };
 
+  const TimeRangeSelector = ({ value, onChange, type }) => (
+    <div className="flex space-x-2 mb-4">
+      <button
+        onClick={() => onChange('today')}
+        className={`px-3 py-1 rounded text-sm ${
+          value === 'today' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+        }`}
+      >
+        Today
+      </button>
+      <button
+        onClick={() => onChange('yesterday')}
+        className={`px-3 py-1 rounded text-sm ${
+          value === 'yesterday' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+        }`}
+      >
+        Yesterday
+      </button>
+      <button
+        onClick={() => onChange('7days')}
+        className={`px-3 py-1 rounded text-sm ${
+          value === '7days' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+        }`}
+      >
+        7 Days
+      </button>
+      <button
+        onClick={() => onChange('30days')}
+        className={`px-3 py-1 rounded text-sm ${
+          value === '30days' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'
+        }`}
+      >
+        30 Days
+      </button>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
@@ -107,19 +188,42 @@ export default function Dashboard() {
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white dark:bg-gray-800 p-4 rounded shadow lg:col-span-2">
-          <h3 className="text-lg font-semibold mb-2">Weekly Bookings</h3>
-          <Bar data={bookingBarData} />
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Bookings</h3>
+            <TimeRangeSelector 
+              value={bookingRange} 
+              onChange={setBookingRange} 
+              type="bookings" 
+            />
+          </div>
+          {bookingData.type === 'bar' ? (
+            <Bar data={bookingChartData} />
+          ) : (
+            <Line data={bookingChartData} />
+          )}
         </div>
+        
         <div className="bg-white dark:bg-gray-800 p-4 rounded shadow">
-          <h3 className="text-lg font-semibold mb-2">Equipment Status</h3>
+          <h3 className="text-lg font-semibold mb-4">Equipment Status</h3>
           <Doughnut data={doughnutData} />
         </div>
       </div>
 
-      {/* New Weekly Reservations */}
+      {/* Reservations Section */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded shadow">
-        <h3 className="text-lg font-semibold mb-2">Weekly Reservations</h3>
-        <Bar data={reservationBarData} />
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Reservations</h3>
+          <TimeRangeSelector 
+            value={reservationRange} 
+            onChange={setReservationRange} 
+            type="reservations" 
+          />
+        </div>
+        {reservationData.type === 'bar' ? (
+          <Bar data={reservationChartData} />
+        ) : (
+          <Line data={reservationChartData} />
+        )}
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Laravel React SPA</title>
+    <title>Sports Inventory System</title>
     @viteReactRefresh
 @vite(['resources/css/app.css', 'resources/js/app.jsx'])
 </head>

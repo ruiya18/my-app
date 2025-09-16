@@ -63,6 +63,7 @@ Route::put('/reservations/{id}', [ReservationController::class, 'update']);
 Route::post('/reservations/{id}/accept', [ReservationController::class, 'accept']);
 Route::post('/reservations/{id}/reject', [ReservationController::class, 'reject']);
 Route::delete('/reservations/{id}', [ReservationController::class, 'destroy']);
+Route::get('/reservations/available-quantities', [ReservationController::class, 'availableQuantities']);
 
 
 // Route::put('/reservations/{id}/accept', [ReservationController::class, 'accept']);

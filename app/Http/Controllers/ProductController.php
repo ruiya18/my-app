@@ -20,6 +20,8 @@ class ProductController extends Controller
         $query->where('outlet', $request->outlet);
     }
 
+    $query->orderBy('outlet', 'desc');
+
     return $query->get();
 }
 
@@ -27,7 +29,17 @@ public function store(Request $request)
 {
     $validated = $request->validate([
         'productId' => 'required|string|unique:products,product_id',
-        'name'      => 'required|string|max:255',
+        'name'      => ['required','string','max:255', 
+        function ($attribute, $value, $fail) use ($request) {
+                $existingProduct = Product::where('name', $value)
+                    ->where('outlet', $request->outlet)
+                    ->first();
+                
+                if ($existingProduct) {
+                    $fail("The product name '{$value}' already exists in the {$request->outlet} outlet.");
+                }
+            }
+        ],
         'quantity'  => 'required|integer|min:0',
         'status'    => 'required|in:active,inactive',
         'outlet'    => 'required|in:QM ROOM,UP STORE,DOWN STORE',
@@ -112,7 +124,18 @@ public function update(Request $request, $productId)
 
     // validate incoming fields
     $validated = $request->validate([
-        'name'     => 'required|string|max:255',
+        'name'      => ['required','string','max:255', 
+            function ($attribute, $value, $fail) use ($request, $product) {
+                $existingProduct = Product::where('name', $value)
+                    ->where('outlet', $request->outlet)
+                    ->where('product_id', '!=', $product->product_id)
+                    ->first();
+                
+                if ($existingProduct) {
+                    $fail("The product name '{$value}' already exists in the {$request->outlet} outlet.");
+                }
+            }
+        ],
         'quantity' => 'required|integer|min:0',
         'status'   => 'required|in:active,inactive',
         'outlet'   => 'nullable|string|max:255',

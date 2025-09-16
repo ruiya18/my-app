@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Reservation;
 use App\Models\Booking;
 use App\Models\Inventory;
+use App\Models\Member;
+use App\Mail\ReservationAcceptedMail;
+use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -32,6 +35,43 @@ class ReservationController extends Controller
 
     return response()->json($reservations);
 }
+
+    public function availableQuantities(Request $request)
+    {
+        $date = $request->query('date');
+        $outlet = $request->query('outlet');
+        $excludeReservationId = $request->query('excludeReservationId');
+
+        if (!$date || !$outlet) {
+            return response()->json(['message' => 'Date and outlet are required'], 400);
+        }
+
+        $acceptedReservations = Reservation::where('reserve_date', $date)
+            ->where('outlet', $outlet)
+            ->where('status', 'accepted');
+
+        if ($excludeReservationId) {
+            $acceptedReservations->where('id', '!=', $excludeReservationId);
+        }
+
+        $reservedQuantities = $acceptedReservations
+            ->select('product_id', DB::raw('SUM(quantity) as total_reserved'))
+            ->groupBy('product_id')
+            ->pluck('total_reserved', 'product_id');
+
+        $inventories = Inventory::where('status', 'active')->get();
+
+        $availableQuantities = [];
+
+        foreach ($inventories as $inventory) {
+            $reserved = $reservedQuantities[$inventory->product_id] ?? 0;
+            $availableQuantities[$inventory->product_id] = max(0, $inventory->instock - $reserved);
+        }
+
+        // print_r($availableQuantities);exit;
+
+        return response()->json($availableQuantities);
+    }
 
     // Store new reservation
     public function store(Request $request)
@@ -108,43 +148,70 @@ public function update(Request $request, $id)
 
 
     public function accept($id)
-{
-    $reservation = Reservation::findOrFail($id);
+    {
+        $reservation = Reservation::findOrFail($id);
 
-    // Update the reservation status to accepted
-    $reservation->status = 'accepted';
-    $reservation->save();
+        $inventory = Inventory::where('product_id', $reservation->product_id)->first();
+        
+        if (!$inventory) {
+            return response()->json(['message' => 'Inventory not found'], 404);
+        }
 
-    // Combine date and time
-    $reserveDateTime = Carbon::parse("{$reservation->reserve_date} {$reservation->reserve_time}");
+        $reservedOnDate = Reservation::where('product_id', $reservation->product_id)
+            ->where('reserve_date', $reservation->reserve_date)
+            ->where('status', 'accepted')
+            ->where('id', '!=', $reservation->id)
+            ->sum('quantity');
 
-    // Create the booking in accepted state
-    $booking = Booking::create([
-        'member_id'      => $reservation->member_id,
-        'reservation_id' => $reservation->id,
-        'username'       => $reservation->username,
-        'product_id'     => $reservation->product_id,
-        'product_name'   => $reservation->product_name,
-        'quantity'       => $reservation->quantity,
-        'status'         => 'accepted',
-        'checkout_at'    => null,
-    ]);
+        $available = $inventory->instock - $reservedOnDate;
 
-    // Update reserved inventory count
-    $inventory = Inventory::where('product_id', $reservation->product_id)->first();
-    if ($inventory) {
+        if ($reservation->quantity > $available) {
+            return response()->json([
+                'message' => 'Not enough inventory available. Only ' . $available . ' items left.'
+            ], 400);
+        }
+
+        $reservation->status = 'accepted';
+        $reservation->save();
+
         $inventory->reserved += $reservation->quantity;
         $inventory->save();
+
+        $booking = Booking::create([
+            'member_id'      => $reservation->member_id,
+            'reservation_id' => $reservation->id,
+            'username'       => $reservation->username,
+            'product_id'     => $reservation->product_id,
+            'product_name'   => $reservation->product_name,
+            'quantity'       => $reservation->quantity,
+            'status'         => 'accepted',
+            'checkout_at'    => null,
+        ]);
+
+        try {
+            $member = Member::find($reservation->member_id);
+            
+            if ($member && $member->username) {
+                Mail::to($member->username)
+                    ->send(new ReservationAcceptedMail($reservation, $booking));
+                
+                $emailStatus = 'Email sent successfully';
+            } else {
+                $emailStatus = 'Member email not found';
+            }
+        } catch (\Exception $e) {
+            $emailStatus = 'Email sending failed: ' . $e->getMessage();
+        }
+
+        return response()->json([
+            'message'     => 'Reservation accepted, booking created, and inventory updated.',
+            'email_status' => $emailStatus,
+            'reservation' => $reservation,
+            'booking'     => $booking,
+            'inventory'   => $inventory,
+        ]);
     }
 
-    return response()->json([
-        'message'     => 'Reservation accepted, booking created, and inventory updated.',
-        'reservation' => $reservation,
-        'booking'     => $booking,
-        'inventory'   => $inventory,
-        'reserve_datetime' => $reserveDateTime->toDateTimeString(),
-    ]);
-}
     // Reject reservation
     public function reject($id)
     {
@@ -195,26 +262,100 @@ public function myReservations(Request $request)
 
 
 
-public function weeklyStats()
-{
-    $now = Carbon::now();
-    $last7Days = collect();
+    public function weeklyStats(Request $request)
+    {
+        $range = $request->query('range', '7days');
+        $today = Carbon::today();
+        
+        switch ($range) {
+            case 'today':
+                $timeSlots = [];
+                for ($i = 0; $i < 24; $i++) {
+                    $timeSlots[] = $today->copy()->addHours($i)->format('Y-m-d H:00:00');
+                }
+                $startDate = $today;
+                break;
+                
+            case 'yesterday':
+                $yesterday = $today->copy()->subDay();
+                $timeSlots = [];
+                for ($i = 0; $i < 24; $i++) {
+                    $timeSlots[] = $yesterday->copy()->addHours($i)->format('Y-m-d H:00:00');
+                }
+                $startDate = $yesterday;
+                break;
+                
+            case '30days':
+                $timeSlots = [];
+                for ($i = 29; $i >= 0; $i--) {
+                    $timeSlots[] = $today->copy()->subDays($i)->format('Y-m-d');
+                }
+                $startDate = $today->copy()->subDays(29);
+                break;
+                
+            case '7days':
+            default:
+                $timeSlots = [];
+                for ($i = 6; $i >= 0; $i--) {
+                    $timeSlots[] = $today->copy()->subDays($i)->format('Y-m-d');
+                }
+                $startDate = $today->copy()->subDays(6);
+                break;
+        }
 
-    for ($i = 6; $i >= 0; $i--) {
-        $day = $now->copy()->subDays($i)->format('Y-m-d');
-        $count = Reservation::whereDate('created_at', $day)->count();
-        $last7Days->push([
-            'date'  => Carbon::parse($day)->format('D'), // Mon, Tue, ...
-            'count' => $count,
+        if ($range === 'today' || $range === 'yesterday') {
+            $reservationData = Reservation::where('created_at', '>=', $startDate)
+                ->where('created_at', '<', $startDate->copy()->addDay())
+                ->select(DB::raw('DATE_FORMAT(created_at, "%Y-%m-%d %H:00:00") as time_slot'), 
+                        DB::raw('count(*) as count'))
+                ->groupBy('time_slot')
+                ->orderBy('time_slot')
+                ->get()
+                ->pluck('count', 'time_slot')
+                ->toArray();
+        } else {
+            $reservationData = Reservation::where('created_at', '>=', $startDate)
+                ->select(DB::raw('DATE(created_at) as date'), 
+                        DB::raw('count(*) as count'))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+                ->pluck('count', 'date')
+                ->toArray();
+        }
+
+        $dataset = [];
+        $labels = [];
+        
+        foreach ($timeSlots as $slot) {
+            $count = 0;
+            
+            if ($range === 'today' || $range === 'yesterday') {
+                foreach ($reservationData as $time => $value) {
+                    if (strpos($time, substr($slot, 0, 13)) === 0) {
+                        $count = $value;
+                        break;
+                    }
+                }
+                $labels[] = Carbon::parse($slot)->format('H:i');
+            } else {
+                $count = $reservationData[$slot] ?? 0;
+                
+                if ($range === '7days') {
+                    $labels[] = Carbon::parse($slot)->format('m/d');
+                } else {
+                    $labels[] = Carbon::parse($slot)->format('M d');
+                }
+            }
+            
+            $dataset[] = $count;
+        }
+
+        return response()->json([
+            'labels' => $labels,
+            'data'   => $dataset
         ]);
     }
-
-    return response()->json([
-        'labels' => $last7Days->pluck('date'),
-        'data'   => $last7Days->pluck('count'),
-    ]);
-
-}
 
 }
 

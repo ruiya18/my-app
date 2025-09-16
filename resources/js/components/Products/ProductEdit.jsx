@@ -36,8 +36,16 @@ const ProductEdit = () => {
         }
         setLoading(false);
       } catch (err) {
-        console.error("Error fetching product", err);
-        setError("Failed to load product.");
+        if (err.response && err.response.status === 422) {
+            const errors = err.response.data.errors;
+            if (errors.name) {
+                setMessage(errors.name[0]);
+            } else {
+                setMessage("Validation error. Please check the form.");
+            }
+        } else {
+            setMessage("Failed to edit product. Please try again.");
+        }
         setLoading(false);
       }
     };

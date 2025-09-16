@@ -90,12 +90,12 @@ const formatTime = (timeString) => {
               }}
             />
 
-            <button
+            {/* <button
               className="bg-black text-white px-4 py-2 rounded hover:bg-blue-700 transition"
               onClick={() => navigate('/booking-add')}
             >
               + Add Booking
-            </button>
+            </button> */}
           </div>
 
           {/* Table */}

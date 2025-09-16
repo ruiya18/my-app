@@ -19,7 +19,7 @@ class StockCheckController extends Controller
             'items' => 'required|array',
         ]);
 
-        $check = StockCheck::create([
+        $stockCheck = StockCheck::create([
             'date' => $request->date,
             'outlet' => $request->outlet,
             'items' => $request->items,
@@ -40,30 +40,46 @@ class StockCheckController extends Controller
     }
 
     // List all stock checks
- public function index()
-{
-    $stockChecks = StockCheck::all()->map(function ($check) {
-        $items = [];
-        foreach ($check->items as $productId => $data) {
-   $product = Product::where('product_id', $productId)->first();
-               $items[] = [
-                'product_id' => $productId,
-                'name' => $product ? $product->name : 'Unknown',
-                'instock' => $data['instock'] ?? 0,
-                'damage' => $data['damage'] ?? 0,
-                'missing' => $data['missing'] ?? 0,
-            ];
-        }
-        return [
-            'id' => $check->id,
-            'date' => $check->date,
-            'outlet' => $check->outlet,
-            'items' => $items,
-        ];
-    });
+    public function index(Request $request)
+    {
+        $request->validate([
+            'date' => 'required|date',
+            'outlet' => 'nullable|string',
+        ]);
 
-    return response()->json($stockChecks);
-}
+        $query = StockCheck::query();
+
+        // Required date filter
+        $query->whereDate('date', $request->date);
+
+        // Optional outlet filter
+        if ($request->filled('outlet')) {
+            $query->where('outlet', $request->outlet);
+        }
+
+        $stockChecks = $query->get()->map(function ($check) {
+            $items = [];
+            foreach ($check->items as $productId => $data) {
+                $product = Product::where('product_id', $productId)->first();
+                $items[] = [
+                    'product_id' => $productId,
+                    'name' => $product ? $product->name : 'Unknown',
+                    'instock' => $data['instock'] ?? 0,
+                    'damage' => $data['damage'] ?? 0,
+                    'missing' => $data['missing'] ?? 0,
+                ];
+            }
+            return [
+                'id' => $check->id,
+                'date' => $check->date,
+                'outlet' => $check->outlet,
+                'items' => $items,
+            ];
+        });
+
+        return response()->json($stockChecks);
+    }
+
 
 
     // Show single stock check

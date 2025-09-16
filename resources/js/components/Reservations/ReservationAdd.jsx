@@ -7,6 +7,7 @@ const ReservationAdd = ({ onSuccess }) => {
   const [products, setProducts] = useState([]);
   const [outlet, setOutlet] = useState("");
   const [filteredProducts, setFilteredProducts] = useState([]);
+  const [availableQuantities, setAvailableQuantities] = useState({});
 
   const [selectedMember, setSelectedMember] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -41,6 +42,24 @@ const ReservationAdd = ({ onSuccess }) => {
     }
   }, [outlet, products]);
 
+  // 当预订日期变化时，获取可用数量
+  useEffect(() => {
+    const fetchAvailableQuantities = async () => {
+      if (reserveDate && outlet) {
+        try {
+          const response = await axios.get(`/api/reservations/available-quantities`, {
+            params: { date: reserveDate, outlet }
+          });
+          setAvailableQuantities(response.data);
+        } catch (err) {
+          console.error("Error fetching available quantities", err);
+        }
+      }
+    };
+    
+    fetchAvailableQuantities();
+  }, [reserveDate, outlet]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -51,6 +70,13 @@ const ReservationAdd = ({ onSuccess }) => {
 
     if (!selectedProduct) {
       alert("Please select a product!");
+      return;
+    }
+
+    // 检查可用数量
+    const availableQty = availableQuantities[selectedProduct.product_id] || selectedProduct.instock;
+    if (quantity > availableQty) {
+      alert(`Only ${availableQty} items available for ${selectedProduct.name} on ${reserveDate}`);
       return;
     }
 
@@ -72,6 +98,12 @@ const ReservationAdd = ({ onSuccess }) => {
     } catch (err) {
       console.error("Add reservation failed", err);
     }
+  };
+
+  // 获取产品的可用数量
+  const getAvailableQuantity = (product) => {
+    if (!reserveDate) return product.instock;
+    return availableQuantities[product.product_id] || product.instock;
   };
 
   return (
@@ -114,6 +146,18 @@ const ReservationAdd = ({ onSuccess }) => {
           </select>
         </div>
 
+        {/* Reserve Date - 移到前面 */}
+        <div className="mb-3">
+          <label className="block">Reserve Date</label>
+          <input
+            type="date"
+            value={reserveDate}
+            onChange={(e) => setReserveDate(e.target.value)}
+            className="border px-3 py-2 w-full"
+            required
+          />
+        </div>
+
         {/* Select Product */}
         <div className="mb-3">
           <label className="block">Product</label>
@@ -126,14 +170,21 @@ const ReservationAdd = ({ onSuccess }) => {
               )
             }
             required
+            disabled={!reserveDate}
           >
             <option value="">-- Select Product --</option>
-            {filteredProducts.map((p) => (
-              <option key={p.product_id} value={p.product_id}>
-                {p.name} (Qty: {p.instock})
-              </option>
-            ))}
+            {filteredProducts.map((p) => {
+              const availableQty = getAvailableQuantity(p);
+              return (
+                <option key={p.product_id} value={p.product_id} disabled={availableQty <= 0}>
+                  {p.name} (Available: {availableQty}, In Stock: {p.instock})
+                </option>
+              );
+            })}
           </select>
+          {!reserveDate && (
+            <p className="text-sm text-red-600 mt-1">Please select a date first</p>
+          )}
         </div>
 
         {/* Quantity */}
@@ -142,22 +193,16 @@ const ReservationAdd = ({ onSuccess }) => {
           <input
             type="number"
             min="1"
+            max={selectedProduct ? getAvailableQuantity(selectedProduct) : 1}
             value={quantity}
             onChange={(e) => setQuantity(parseInt(e.target.value))}
             className="border px-3 py-2 w-full"
           />
-        </div>
-
-        {/* Reserve Date */}
-        <div className="mb-3">
-          <label className="block">Reserve Date</label>
-          <input
-            type="date"
-            value={reserveDate}
-            onChange={(e) => setReserveDate(e.target.value)}
-            className="border px-3 py-2 w-full"
-            required
-          />
+          {selectedProduct && (
+            <p className="text-sm text-gray-600 mt-1">
+              Max available: {getAvailableQuantity(selectedProduct)}
+            </p>
+          )}
         </div>
 
         {/* Reserve Time */}
@@ -172,13 +217,13 @@ const ReservationAdd = ({ onSuccess }) => {
           />
         </div>
 
-            <div className="flex justify-end">
-        <button
-          type="submit"
-          className="bg-black text-white px-4 py-2 rounded"
-        >
-          Submit
-        </button>
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="bg-black text-white px-4 py-2 rounded"
+          >
+            Submit
+          </button>
         </div>
       </form>
     </div>

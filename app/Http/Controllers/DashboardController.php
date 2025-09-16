@@ -28,32 +28,97 @@ class DashboardController extends Controller
         ]);
     }
 
-    public function weeklyBookings()
+    public function weeklyBookings(Request $request)
     {
-        // Returns counts of bookings per day for past 7 days
+        $range = $request->query('range', '7days');
         $today = Carbon::today();
-        $dates = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $dates[] = $today->copy()->subDays($i)->toDateString();
+        
+        switch ($range) {
+            case 'today':
+                $timeSlots = [];
+                for ($i = 0; $i < 24; $i++) {
+                    $timeSlots[] = $today->copy()->addHours($i)->format('Y-m-d H:00:00');
+                }
+                $startDate = $today;
+                break;
+                
+            case 'yesterday':
+                $yesterday = $today->copy()->subDay();
+                $timeSlots = [];
+                for ($i = 0; $i < 24; $i++) {
+                    $timeSlots[] = $yesterday->copy()->addHours($i)->format('Y-m-d H:00:00');
+                }
+                $startDate = $yesterday;
+                break;
+                
+            case '30days':
+                $timeSlots = [];
+                for ($i = 29; $i >= 0; $i--) {
+                    $timeSlots[] = $today->copy()->subDays($i)->format('Y-m-d');
+                }
+                $startDate = $today->copy()->subDays(29);
+                break;
+                
+            case '7days':
+            default:
+                $timeSlots = [];
+                for ($i = 6; $i >= 0; $i--) {
+                    $timeSlots[] = $today->copy()->subDays($i)->format('Y-m-d');
+                }
+                $startDate = $today->copy()->subDays(6);
+                break;
         }
 
-        // Query: group booking created_at by date for past 7 days
-        $bookingData = Booking::where('created_at', '>=', $today->copy()->subDays(6))
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as count'))
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get()
-            ->pluck('count', 'date')
-            ->toArray();
+        if ($range === 'today' || $range === 'yesterday') {
+            $bookingData = Booking::where('created_at', '>=', $startDate)
+                ->where('created_at', '<', $startDate->copy()->addDay())
+                ->select(DB::raw('DATE_FORMAT(created_at, "%Y-%m-%d %H:00:00") as time_slot'), 
+                        DB::raw('count(*) as count'))
+                ->groupBy('time_slot')
+                ->orderBy('time_slot')
+                ->get()
+                ->pluck('count', 'time_slot')
+                ->toArray();
+        } else {
+            $bookingData = Booking::where('created_at', '>=', $startDate)
+                ->select(DB::raw('DATE(created_at) as date'), 
+                        DB::raw('count(*) as count'))
+                ->groupBy('date')
+                ->orderBy('date')
+                ->get()
+                ->pluck('count', 'date')
+                ->toArray();
+        }
 
-        // Ensure results for all 7 days, filling zeros where missing
         $dataset = [];
-        foreach ($dates as $date) {
-            $dataset[] = isset($bookingData[$date]) ? intval($bookingData[$date]) : 0;
+        $labels = [];
+        
+        foreach ($timeSlots as $slot) {
+            $count = 0;
+            
+            if ($range === 'today' || $range === 'yesterday') {
+                foreach ($bookingData as $time => $value) {
+                    if (strpos($time, substr($slot, 0, 13)) === 0) {
+                        $count = $value;
+                        break;
+                    }
+                }
+                $labels[] = Carbon::parse($slot)->format('H:i');
+            } else {
+                $count = $bookingData[$slot] ?? 0;
+                
+                if ($range === '7days') {
+                    $labels[] = Carbon::parse($slot)->format('m/d');
+                } else {
+                    $labels[] = Carbon::parse($slot)->format('M d');
+                }
+            }
+            
+            $dataset[] = $count;
         }
 
         return response()->json([
-            'labels' => $dates,
+            'labels' => $labels,
             'data'   => $dataset
         ]);
     }

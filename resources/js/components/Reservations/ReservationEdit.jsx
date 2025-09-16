@@ -7,10 +7,12 @@ const ReservationEdit = () => {
   const navigate = useNavigate();
 
   const [reservation, setReservation] = useState(null);
+  const [availableQuantity, setAvailableQuantity] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [reserveDate, setReserveDate] = useState("");
   const [reserveTime, setReserveTime] = useState("");
   const [status, setStatus] = useState("pending");
+  const [originalData, setOriginalData] = useState({});
 
   useEffect(() => {
     const fetchReservation = async () => {
@@ -23,6 +25,16 @@ const ReservationEdit = () => {
           setReserveDate(found.reserve_date);
           setReserveTime(found.reserve_time);
           setStatus(found.status);
+          setOriginalData(found);
+
+          const availableRes = await axios.get(`/api/reservations/available-quantities`, {
+            params: { 
+              date: found.reserve_date, 
+              outlet: found.outlet,
+              excludeReservationId: found.id
+            }
+          });
+          setAvailableQuantity(availableRes.data[found.product_id] || 0);
         }
       } catch (err) {
         console.error("Error fetching reservation", err);
@@ -33,12 +45,16 @@ const ReservationEdit = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    
+    if (status === "pending" && quantity > availableQuantity + reservation.quantity) {
+      alert(`Only ${availableQuantity + reservation.quantity} items available for this product on ${reserveDate}`);
+      return;
+    }
+
     try {
       if (status === "accepted") {
-        // 🔹 If status is accepted → call special accept endpoint
         await axios.post(`/api/reservations/${id}/accept`);
       } else {
-        // 🔹 Otherwise just update normally
         await axios.put(`/api/reservations/${id}`, {
           quantity,
           reserve_date: reserveDate,
@@ -75,10 +91,17 @@ const ReservationEdit = () => {
           <input
             type="number"
             min="1"
+            max={status === "pending" ? availableQuantity + reservation.quantity : quantity}
             value={quantity}
             onChange={(e) => setQuantity(parseInt(e.target.value))}
             className="border px-3 py-2 w-full"
+            disabled={status !== "pending"}
           />
+          {status === "pending" && (
+            <p className="text-sm text-gray-600 mt-1">
+              Max available: {availableQuantity + reservation.quantity}
+            </p>
+          )}
         </div>
 
         <div className="mb-3">
@@ -88,6 +111,7 @@ const ReservationEdit = () => {
             value={reserveDate}
             onChange={(e) => setReserveDate(e.target.value)}
             className="border px-3 py-2 w-full"
+            disabled={status !== "pending"}
           />
         </div>
 
@@ -98,6 +122,7 @@ const ReservationEdit = () => {
             value={reserveTime}
             onChange={(e) => setReserveTime(e.target.value)}
             className="border px-3 py-2 w-full"
+            disabled={status !== "pending"}
           />
         </div>
 
@@ -114,12 +139,15 @@ const ReservationEdit = () => {
           </select>
         </div>
 
-        <button
-          type="submit"
-          className="bg-green-600 text-white px-4 py-2 rounded"
-        >
-          Update Reservation
-        </button>
+        {originalData.status == "pending" && (
+          <button
+            type="submit"
+            className="bg-green-600 text-white px-4 py-2 rounded"
+          >
+            Update Reservation
+          </button>
+        )}
+
       </form>
     </div>
   );

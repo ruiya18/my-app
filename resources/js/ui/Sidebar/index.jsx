@@ -17,10 +17,10 @@ const Sidebar = () => {
   // Define role-based permissions
   const rolePermissions = {
     administrator: [
-      'Dashboard', 'Product', 'Inventory', 'Stock Check', 'Booking', 'Reservation', 'User', 'Member'
+      'Dashboard', 'Product', 'Inventory', 'Stock Check', 'Stock Check List', 'Booking', 'Reservation', 'User', 'Member'
     ],
     'quarter master': [
-      'Product', 'Inventory', 'Stock Check', 'Booking', 'Reservation'
+      'Product', 'Inventory', 'Stock Check', 'Stock Check List', 'Booking', 'Reservation'
     ]
   };
 
@@ -29,6 +29,7 @@ const Sidebar = () => {
     { label: 'Product', to: '/product-list' },
     { label: 'Inventory', to: '/inventory' },
     { label: 'Stock Check', to: '/stockcheck-add' },
+    { label: 'Stock Check List', to: '/stockcheck-list' },
     { label: 'Booking', to: '/booking-list' },
     { label: 'Reservation', to: '/reservation-list' },
     { label: 'Member', to: '/member-list' },

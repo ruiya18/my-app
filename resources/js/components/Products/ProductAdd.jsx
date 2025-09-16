@@ -74,8 +74,16 @@ const ProductAdd = ({ onProductAdded }) => {
 
       navigate("/product-list");
     } catch (err) {
-      console.error("Error adding product", err);
-      setMessage("Failed to add product.");
+      if (err.response && err.response.status === 422) {
+        const errors = err.response.data.errors;
+        if (errors.name) {
+          setMessage(errors.name[0]);
+        } else {
+          setMessage('Validation error. Please check the form.');
+        }
+      } else {
+        setMessage('Failed to add product. Please try again.');
+      }
     }
   };
 
