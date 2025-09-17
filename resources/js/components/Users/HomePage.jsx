@@ -11,7 +11,7 @@ const Homepage = () => {
         const member = localStorage.getItem("member");
 
         if (!member) {
-            navigate(`/?redirect=/home/${productId}`);
+            navigate(`${window.location.origin}/?redirect=/home/${productId}`);
             return;
         }
 

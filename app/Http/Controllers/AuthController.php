@@ -32,6 +32,28 @@ class AuthController extends Controller
     }
 
 
+// public function login(Request $request)
+// {
+//     $request->validate([
+//         'username' => 'required|string',
+//         'password' => 'required|string',
+//     ]);
+
+//     // Check Users table first (admins/quartermasters)
+//     $user = User::where('username', $request->username)->first();
+//     if ($user && \Hash::check($request->password, $user->password)) {
+//         return response()->json(['user' => $user], 200);
+//     }
+
+//     // Check Members table (teachers/students)
+//     $member = Member::where('username', $request->username)->first();
+//     if ($member && \Hash::check($request->password, $member->password)) {
+//         return response()->json(['member' => $member], 200);
+//     }
+
+//     return response()->json(['message' => 'Please contact  adminis'], 401);
+// }
+
 public function login(Request $request)
 {
     $request->validate([
@@ -41,17 +63,26 @@ public function login(Request $request)
 
     // Check Users table first (admins/quartermasters)
     $user = User::where('username', $request->username)->first();
-    if ($user && \Hash::check($request->password, $user->password)) {
-        return response()->json(['user' => $user], 200);
+    if ($user) {
+        if (\Hash::check($request->password, $user->password)) {
+            return response()->json(['user' => $user], 200);
+        }
+        return response()->json(['message' => 'Invalid password'], 401);
     }
 
     // Check Members table (teachers/students)
     $member = Member::where('username', $request->username)->first();
-    if ($member && \Hash::check($request->password, $member->password)) {
-        return response()->json(['member' => $member], 200);
+    if ($member) {
+        if (\Hash::check($request->password, $member->password)) {
+            return response()->json(['member' => $member], 200);
+        }
+        return response()->json(['message' => 'Invalid password'], 401);
     }
 
-    return response()->json(['message' => 'Invalid credentials'], 401);
+    // If username not found in both tables
+    return response()->json([
+        'message' => 'Account not found. Please ask the administrator to create an account for you.'
+    ], 404);
 }
 
 

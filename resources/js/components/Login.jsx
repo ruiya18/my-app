@@ -14,25 +14,34 @@ function Login({ onLogin }) {
 
 
 const handleLogin = async (e) => {
-    e.preventDefault();
-    setError("");
+  e.preventDefault();
+  setError("");
+  try {
+    const res = await axios.post("/api/login", { username, password });
 
-    try {
-      const res = await axios.post("/api/login", { username, password });
-
-      if (res.status === 200) {
-        if (res.data.member) {
-          localStorage.setItem("member", JSON.stringify(res.data.member));
-          navigate(redirect, { replace: true });
-        } else if (res.data.user) {
-          localStorage.setItem("user", JSON.stringify(res.data.user));
-          navigate("/dashboard");
-        }
+    if (res.status === 200) {
+      if (res.data.member) {
+        localStorage.setItem("member", JSON.stringify(res.data.member));
+        navigate(redirect, { replace: true });
+      } else if (res.data.user) {
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        navigate("/dashboard");
       }
-    } catch (err) {
-      setError("Invalid credentials, please try again.");
     }
-  };
+  } catch (err) {
+    if (err.response) {
+      if (err.response.status === 401) {
+        setError("Invalid password. Please try again.");
+      } else if (err.response.status === 404) {
+        setError("Account not found. Please ask the administrator to create an account for you.");
+      } else {
+        setError("Server error. Please try again later.");
+      }
+    } else {
+      setError("Network error. Please check your connection.");
+    }
+  }
+};
 
 //   const handleLogin = async (e) => {
 //   e.preventDefault();

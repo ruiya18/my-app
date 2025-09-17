@@ -146,17 +146,19 @@ const ReservationAdd = ({ onSuccess }) => {
           </select>
         </div>
 
-        {/* Reserve Date - 移到前面 */}
-        <div className="mb-3">
-          <label className="block">Reserve Date</label>
-          <input
-            type="date"
-            value={reserveDate}
-            onChange={(e) => setReserveDate(e.target.value)}
-            className="border px-3 py-2 w-full"
-            required
-          />
-        </div>
+       {/* Reserve Date */}
+          <div className="mb-3">
+            <label className="block">Reserve Date</label>
+            <input
+              type="date"
+              value={reserveDate}
+              onChange={(e) => setReserveDate(e.target.value)}
+              className="border px-3 py-2 w-full"
+              required
+              min={new Date().toISOString().split("T")[0]}  // disallow past dates
+            />
+          </div>
+
 
         {/* Select Product */}
         <div className="mb-3">
