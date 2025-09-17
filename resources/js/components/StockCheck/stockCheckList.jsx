@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 const StockCheckList = () => {
   const [stockChecks, setStockChecks] = useState([]);
   const [date, setDate] = useState("");
   const [outlet, setOutlet] = useState("");
-
+  const navigate = useNavigate();
+  const [filterText, setFilterText] = useState("");
+  
   const fetchStockChecks = async () => {
     if (!date) {
       alert("Please select a date");
@@ -33,6 +36,14 @@ const StockCheckList = () => {
     <div className="p-6 max-w-6xl mx-auto bg-white shadow-md rounded-lg">
       <h2 className="text-xl font-semibold mb-6">Stock Check Records</h2>
 
+    <div className="flex flex-col sm:flex-row justify-end items-center mb-6 gap-4">
+            <button
+              className="bg-black text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+              onClick={() => navigate("/stockcheck-add")} 
+            >
+              + Stock Check
+            </button>
+          </div>
       {/* 🔎 Filter Form */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <div className="flex-1">

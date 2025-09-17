@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\Inventory;
 use App\Models\Member;
 use App\Mail\ReservationAcceptedMail;
+use App\Mail\ReservationRejectedMail;
 use Illuminate\Support\Facades\Mail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -213,17 +214,45 @@ public function update(Request $request, $id)
     }
 
     // Reject reservation
-    public function reject($id)
-    {
-        $reservation = Reservation::findOrFail($id);
-        $reservation->status = 'rejected';
-        $reservation->save();
+    // public function reject($id)
+    // {
+    //     $reservation = Reservation::findOrFail($id);
+    //     $reservation->status = 'rejected';
+    //     $reservation->save();
 
-        return response()->json([
-            'message' => 'Reservation rejected',
-            'reservation' => $reservation
-        ]);
+    //     return response()->json([
+    //         'message' => 'Reservation rejected',
+    //         'reservation' => $reservation
+    //     ]);
+    // }
+    public function reject($id)
+{
+    $reservation = Reservation::findOrFail($id);
+    $reservation->status = 'rejected';
+    $reservation->save();
+
+    $emailStatus = 'Not sent';
+    try {
+        $member = Member::find($reservation->member_id);
+
+        if ($member && $member->username) {
+            Mail::to($member->username)
+                ->send(new ReservationRejectedMail($reservation));
+
+            $emailStatus = 'Email sent successfully';
+        } else {
+            $emailStatus = 'Member email not found';
+        }
+    } catch (\Exception $e) {
+        $emailStatus = 'Email sending failed: ' . $e->getMessage();
     }
+
+    return response()->json([
+        'message' => 'Reservation rejected',
+        'reservation' => $reservation,
+        'email_status' => $emailStatus
+    ]);
+}
 
     public function destroy($id)
 {
@@ -323,10 +352,8 @@ public function myReservations(Request $request)
                 ->pluck('count', 'date')
                 ->toArray();
         }
-
         $dataset = [];
         $labels = [];
-        
         foreach ($timeSlots as $slot) {
             $count = 0;
             
@@ -347,10 +374,9 @@ public function myReservations(Request $request)
                     $labels[] = Carbon::parse($slot)->format('M d');
                 }
             }
-            
+
             $dataset[] = $count;
         }
-
         return response()->json([
             'labels' => $labels,
             'data'   => $dataset
