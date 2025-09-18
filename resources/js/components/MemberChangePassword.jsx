@@ -36,9 +36,20 @@ const MemberChangePassword = () => {
       // Redirect back to member list or edit page
       setTimeout(() => navigate("/member-list"), 1000);
     } catch (err) {
-      console.error("Error updating password:", err);
-      setMessage("Failed to update password.");
+  console.error("Error updating password:", err);
+
+  if (err.response && err.response.status === 422) {
+    const errors = err.response.data.errors;
+    if (errors && errors.password) {
+      setMessage(errors.password[0]); // Shows the first password error
+    } else {
+      setMessage("Validation error. Please check your inputs.");
     }
+  } else {
+    setMessage("Failed to update password.");
+  }
+}
+
   };
 
   return (

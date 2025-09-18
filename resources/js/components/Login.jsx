@@ -29,20 +29,25 @@ const handleLogin = async (e) => {
       }
     }
   } catch (err) {
-    if (err.response) {
-      if (err.response.status === 401) {
-        setError("Invalid password. Please try again.");
-      } else if (err.response.status === 404) {
-        setError("Account not found. Please ask the administrator to create an account for you.");
-      } else {
-        setError("Server error. Please try again later.");
+     if (err.response) {
+      switch (err.response.status) {
+        case 401:
+          setError("Invalid password. Please try again.");
+          break;
+        case 403:
+          setError("Your account is inactive. Please contact the administrator.");
+          break;
+        case 404:
+          setError("Account not found. Please ask the administrator to create an account for you.");
+          break;
+        default:
+          setError("Server error. Please try again later.");
       }
     } else {
       setError("Network error. Please check your connection.");
     }
   }
 };
-
 //   const handleLogin = async (e) => {
 //   e.preventDefault();
 //   setError('');
