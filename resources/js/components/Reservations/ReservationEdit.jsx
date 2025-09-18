@@ -13,10 +13,13 @@ const ReservationEdit = () => {
   const [reserveTime, setReserveTime] = useState("");
   const [status, setStatus] = useState("pending");
   const [originalData, setOriginalData] = useState({});
+  const [isLoading, setIsLoading] = useState(true); // For initial loading
+  const [isUpdating, setIsUpdating] = useState(false); // For update operations
 
   useEffect(() => {
     const fetchReservation = async () => {
       try {
+        setIsLoading(true);
         const res = await axios.get(`/api/reservations`);
         const found = res.data.find((r) => r.id == id);
         if (found) {
@@ -38,6 +41,8 @@ const ReservationEdit = () => {
         }
       } catch (err) {
         console.error("Error fetching reservation", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     fetchReservation();
@@ -52,6 +57,8 @@ const ReservationEdit = () => {
     }
 
     try {
+      setIsUpdating(true);
+      
       if (status === "accepted") {
         await axios.post(`/api/reservations/${id}/accept`);
       } else if (status === "rejected") {
@@ -69,11 +76,35 @@ const ReservationEdit = () => {
       navigate("/reservation-list");
     } catch (err) {
       console.error("Update failed", err);
+      alert("Update failed. Please try again.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-md mx-auto bg-white shadow rounded flex justify-center items-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading reservation details...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!reservation) {
-    return <p className="p-6">Loading reservation...</p>;
+    return (
+      <div className="p-6 max-w-md mx-auto bg-white shadow rounded">
+        <p className="text-red-500">Reservation not found.</p>
+        <button
+          onClick={() => navigate("/reservation-list")}
+          className="mt-4 bg-black hover:bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          Back to List
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -97,7 +128,7 @@ const ReservationEdit = () => {
             value={quantity}
             onChange={(e) => setQuantity(parseInt(e.target.value))}
             className="border px-3 py-2 w-full"
-            disabled={status !== "pending"}
+            disabled={status !== "pending" || isUpdating}
           />
           {status === "pending" && (
             <p className="text-sm text-gray-600 mt-1">
@@ -113,7 +144,7 @@ const ReservationEdit = () => {
             value={reserveDate}
             onChange={(e) => setReserveDate(e.target.value)}
             className="border px-3 py-2 w-full"
-            disabled={status !== "pending"}
+            disabled={status !== "pending" || isUpdating}
           />
         </div>
 
@@ -124,7 +155,7 @@ const ReservationEdit = () => {
             value={reserveTime}
             onChange={(e) => setReserveTime(e.target.value)}
             className="border px-3 py-2 w-full"
-            disabled={status !== "pending"}
+            disabled={status !== "pending" || isUpdating}
           />
         </div>
 
@@ -134,6 +165,7 @@ const ReservationEdit = () => {
             value={status}
             onChange={(e) => setStatus(e.target.value)}
             className="border px-3 py-2 w-full"
+            disabled={isUpdating}
           >
             <option value="pending">Pending</option>
             <option value="accepted">Accepted</option>
@@ -144,16 +176,25 @@ const ReservationEdit = () => {
         {originalData.status == "pending" && (
           <button
             type="submit"
-            className="bg-green-600 text-white px-4 py-2 rounded"
+            className="bg-green-600 text-white px-4 py-2 rounded flex items-center justify-center"
+            disabled={isUpdating}
           >
-            Update Reservation
+            {isUpdating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Updating...
+              </>
+            ) : (
+              "Update Reservation"
+            )}
           </button>
         )}
-        <div className="flex justify-end">
+        <div className="flex justify-end mt-4">
           <button
             type="button"
             onClick={() => navigate("/reservation-list")}
             className="bg-black hover:bg-blue-600 text-white px-4 py-2 rounded"
+            disabled={isUpdating}
           >
             Back
           </button>
