@@ -1,9 +1,10 @@
-// resources/js/components/Inventory.jsx
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
 const Inventory = () => {
   const [inventories, setInventories] = useState([]);
+  const [pages, setPages] = useState({}); // Track current page per outlet
+  const itemsPerPage = 10; // Number of items per page
 
   const fetchInventories = async () => {
     try {
@@ -34,52 +35,81 @@ const Inventory = () => {
   return (
     <div className="p-6 max-w-6xl mx-auto bg-white shadow-md rounded-lg">
       <h2 className="text-xl font-semibold mb-4">Inventory</h2>
- <div className="grid grid-cols-1 gap-6">
-      {Object.keys(groupedByOutlet).length > 0 ? (
-        Object.keys(groupedByOutlet).map((outlet) => (
-          <div key={outlet} className="mb-8">
-            <h3 className="text-lg font-bold mb-2">{outlet}</h3>
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto border-collapse">
-                <thead>
-                  <tr>
-                    <th className="border-b px-4 py-2 text-left">Product ID</th>
-                    <th className="border-b px-4 py-2 text-left">Name</th>
-                    <th className="border-b px-4 py-2 text-center">In Stock</th>
-                    <th className="border-b px-4 py-2 text-center">Damage</th>
-                    <th className="border-b px-4 py-2 text-center">Missing</th>
-                    <th className="border-b px-4 py-2 text-center text-blue-600">Reserved</th>
-                    <th className="border-b px-4 py-2 text-center text-blue-600">Rented</th>
-                    {/* <th className="border-b px-4 py-2 text-center">Status</th> */}
-                  </tr>
-                </thead>
-                <tbody>
-                  {groupedByOutlet[outlet].map((item) => (
-                    <tr key={item.id}>
-                      <td className="border-b px-4 py-2">{item.product_id}</td>
-                      <td className="border-b px-4 py-2">{item.name}</td>
-                      <td className="border-b px-4 py-2 text-center">{item.instock}</td>
-                      <td className="border-b px-4 py-2 text-center">{item.damage}</td>
-                      <td className="border-b px-4 py-2 text-center">{item.missing}</td>
-                      <td className="border-b px-4 py-2 text-center text-blue-600 ">[{item.reserved}]</td>
-                      <td className="border-b px-4 py-2 text-center text-blue-600 ">{item.rented}</td>
+      <div className="grid grid-cols-1 gap-6">
+        {Object.keys(groupedByOutlet).length > 0 ? (
+          Object.keys(groupedByOutlet).map((outlet) => {
+            const page = pages[outlet] || 1;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const totalPages = Math.ceil(groupedByOutlet[outlet].length / itemsPerPage);
+            const pageItems = groupedByOutlet[outlet].slice(startIndex, endIndex);
 
-                      {/* <td className="border-b px-4 py-2 text-center">
-                        <span className={getStatusClasses(item.status)}>
-                          {item.status}
-                        </span>
-                      </td> */}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))
-      ) : (
-        <p>No inventory records available</p>
-      )}
-    </div>
+            return (
+              <div key={outlet} className="mb-8">
+                <h3 className="text-lg font-bold mb-2">{outlet}</h3>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full table-auto border-collapse">
+                    <thead>
+                      <tr>
+                        <th className="border-b px-4 py-2 text-left">Product ID</th>
+                        <th className="border-b px-4 py-2 text-left">Name</th>
+                        <th className="border-b px-4 py-2 text-center">In Stock</th>
+                        <th className="border-b px-4 py-2 text-center">Damage</th>
+                        <th className="border-b px-4 py-2 text-center">Missing</th>
+                        <th className="border-b px-4 py-2 text-center text-blue-600">Reserved</th>
+                        <th className="border-b px-4 py-2 text-center text-blue-600">Rented</th>
+                        {/* <th className="border-b px-4 py-2 text-center">Status</th> */}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pageItems.map((item) => (
+                        <tr key={item.id}>
+                          <td className="border-b px-4 py-2">{item.product_id}</td>
+                          <td className="border-b px-4 py-2">{item.name}</td>
+                          <td className="border-b px-4 py-2 text-center">{item.instock}</td>
+                          <td className="border-b px-4 py-2 text-center">{item.damage}</td>
+                          <td className="border-b px-4 py-2 text-center">{item.missing}</td>
+                          <td className="border-b px-4 py-2 text-center text-blue-600 ">[{item.reserved}]</td>
+                          <td className="border-b px-4 py-2 text-center text-blue-600 ">{item.rented}</td>
+                          {/* <td className="border-b px-4 py-2 text-center">
+                            <span className={getStatusClasses(item.status)}>
+                              {item.status}
+                            </span>
+                          </td> */}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination - Same style as UserList */}
+                {totalPages > 1 && (
+                  <div className="flex justify-center mt-4 space-x-2">
+                    {[...Array(totalPages)].map((_, index) => {
+                      const pageNumber = index + 1;
+                      return (
+                        <button
+                          key={pageNumber}
+                          onClick={() => setPages({ ...pages, [outlet]: pageNumber })}
+                          className={`px-3 py-1 rounded border ${
+                            page === pageNumber
+                              ? "bg-black text-white"
+                              : "bg-white text-black"
+                          }`}
+                        >
+                          {pageNumber}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        ) : (
+          <p>No inventory records available</p>
+        )}
+      </div>
     </div>
   );
 };

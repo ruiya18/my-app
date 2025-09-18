@@ -96,6 +96,15 @@ const History = () => {
     const totalBookingPages = Math.ceil(bookings.length / itemsPerPage);
     const totalReservationPages = Math.ceil(reservations.length / itemsPerPage);
 
+    // Pagination button handlers
+    const handleBookingPageChange = (pageNumber) => {
+        setBookingPage(pageNumber);
+    };
+
+    const handleReservationPageChange = (pageNumber) => {
+        setReservationPage(pageNumber);
+    };
+
     const statusColor = (status) => {
         switch (status) {
             case "accepted":
@@ -263,26 +272,27 @@ const History = () => {
                             ))}
                         </div>
 
-                        {/* Pagination */}
-                        <div className="flex justify-center space-x-2">
-                            <button
-                                disabled={bookingPage === 1}
-                                onClick={() => setBookingPage((p) => p - 1)}
-                                className="px-3 py-1 border rounded disabled:opacity-50"
-                            >
-                                Prev
-                            </button>
-                            <span>
-                                Page {bookingPage} of {totalBookingPages}
-                            </span>
-                            <button
-                                disabled={bookingPage === totalBookingPages}
-                                onClick={() => setBookingPage((p) => p + 1)}
-                                className="px-3 py-1 border rounded disabled:opacity-50"
-                            >
-                                Next
-                            </button>
-                        </div>
+                        {/* Updated Pagination */}
+                        {totalBookingPages > 1 && (
+                            <div className="flex justify-center mt-4 space-x-2">
+                                {[...Array(totalBookingPages)].map((_, index) => {
+                                    const pageNumber = index + 1;
+                                    return (
+                                        <button
+                                            key={pageNumber}
+                                            onClick={() => handleBookingPageChange(pageNumber)}
+                                            className={`px-3 py-1 rounded border ${
+                                                bookingPage === pageNumber
+                                                    ? "bg-black text-white"
+                                                    : "bg-white text-black"
+                                            }`}
+                                        >
+                                            {pageNumber}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -311,6 +321,8 @@ const History = () => {
                                                         ? res.product_image
                                                         : `/storage/${res.product_image}`
                                                 }
+                                                alt={res.product_name}
+                                                className="h-40 object-contain"
                                             />
                                         ) : (
                                             <span className="text-gray-400">
@@ -355,29 +367,27 @@ const History = () => {
                             ))}
                         </div>
 
-                        {/* Pagination */}
-                        <div className="flex justify-center space-x-2">
-                            <button
-                                disabled={reservationPage === 1}
-                                onClick={() => setReservationPage((p) => p - 1)}
-                                className="px-3 py-1 border rounded disabled:opacity-50"
-                            >
-                                Prev
-                            </button>
-                            <span>
-                                Page {reservationPage} of{" "}
-                                {totalReservationPages}
-                            </span>
-                            <button
-                                disabled={
-                                    reservationPage === totalReservationPages
-                                }
-                                onClick={() => setReservationPage((p) => p + 1)}
-                                className="px-3 py-1 border rounded disabled:opacity-50"
-                            >
-                                Next
-                            </button>
-                        </div>
+                        {/* Updated Pagination */}
+                        {totalReservationPages > 1 && (
+                            <div className="flex justify-center mt-4 space-x-2">
+                                {[...Array(totalReservationPages)].map((_, index) => {
+                                    const pageNumber = index + 1;
+                                    return (
+                                        <button
+                                            key={pageNumber}
+                                            onClick={() => handleReservationPageChange(pageNumber)}
+                                            className={`px-3 py-1 rounded border ${
+                                                reservationPage === pageNumber
+                                                    ? "bg-black text-white"
+                                                    : "bg-white text-black"
+                                            }`}
+                                        >
+                                            {pageNumber}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
