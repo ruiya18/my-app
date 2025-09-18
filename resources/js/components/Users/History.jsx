@@ -39,7 +39,7 @@ const History = () => {
 
     const handleCheckout = async (booking) => {
         try {
-            await axios.post("/api/bookings/checkout", {
+            const response = await axios.post("/api/bookings/checkout", {
                 member_id: booking.member_id,
                 username: booking.username,
                 product_id: booking.product_id,
@@ -60,9 +60,20 @@ const History = () => {
                 `/api/my-reservations?member_id=${member.id}`,
             );
             setReservations(reservationsRes.data);
-
         } catch (err) {
-            alert("Checkout failed");
+            // Check if this is the specific time window error
+            if (
+                err.response &&
+                err.response.data &&
+                err.response.data.message ===
+                    "You can only check out within 15 minutes before or after the reserved time."
+            ) {
+                alert(
+                    "Checkout failed: You can only check out within 15 minutes before or after the reserved time.",
+                );
+            } else {
+                alert("Checkout failed");
+            }
             console.error(err);
         }
     };
@@ -120,6 +131,19 @@ const History = () => {
             default:
                 return "bg-gray-100 text-gray-700 px-2 py-1 rounded-full";
         }
+    };
+
+    const isReservationDatePassed = (reserveDate) => {
+        if (!reserveDate) return false;
+
+        const today = new Date();
+        const reservationDate = new Date(reserveDate);
+
+        // Reset time parts to compare only dates
+        today.setHours(0, 0, 0, 0);
+        reservationDate.setHours(0, 0, 0, 0);
+
+        return reservationDate < today;
     };
 
     return (
@@ -239,8 +263,16 @@ const History = () => {
                                         {/* Buttons */}
                                         {booking.reservation_id && (
                                             <div className="flex space-x-3 mt-4">
-                                                {booking.status ===
-                                                    "accepted" && (
+                                                {isReservationDatePassed(
+                                                    booking.reserve_date,
+                                                ) ? (
+                                                    // <span className="text-red-500 font-semibold">
+                                                    //     Reservation date has
+                                                    //     passed
+                                                    // </span>
+                                                    <></>
+                                                ) : booking.status ===
+                                                  "accepted" ? (
                                                     <button
                                                         onClick={() =>
                                                             handleCheckout(
@@ -251,7 +283,12 @@ const History = () => {
                                                     >
                                                         Check-Out
                                                     </button>
-                                                )}
+                                                ) : null}
+                                            </div>
+                                        )}
+
+                                        {booking.reservation_id && (
+                                            <div className="flex space-x-3 mt-4">
                                                 {booking.status ===
                                                     "checkout" && (
                                                     <button
@@ -275,22 +312,28 @@ const History = () => {
                         {/* Updated Pagination */}
                         {totalBookingPages > 1 && (
                             <div className="flex justify-center mt-4 space-x-2">
-                                {[...Array(totalBookingPages)].map((_, index) => {
-                                    const pageNumber = index + 1;
-                                    return (
-                                        <button
-                                            key={pageNumber}
-                                            onClick={() => handleBookingPageChange(pageNumber)}
-                                            className={`px-3 py-1 rounded border ${
-                                                bookingPage === pageNumber
-                                                    ? "bg-black text-white"
-                                                    : "bg-white text-black"
-                                            }`}
-                                        >
-                                            {pageNumber}
-                                        </button>
-                                    );
-                                })}
+                                {[...Array(totalBookingPages)].map(
+                                    (_, index) => {
+                                        const pageNumber = index + 1;
+                                        return (
+                                            <button
+                                                key={pageNumber}
+                                                onClick={() =>
+                                                    handleBookingPageChange(
+                                                        pageNumber,
+                                                    )
+                                                }
+                                                className={`px-3 py-1 rounded border ${
+                                                    bookingPage === pageNumber
+                                                        ? "bg-black text-white"
+                                                        : "bg-white text-black"
+                                                }`}
+                                            >
+                                                {pageNumber}
+                                            </button>
+                                        );
+                                    },
+                                )}
                             </div>
                         )}
                     </div>
@@ -370,22 +413,29 @@ const History = () => {
                         {/* Updated Pagination */}
                         {totalReservationPages > 1 && (
                             <div className="flex justify-center mt-4 space-x-2">
-                                {[...Array(totalReservationPages)].map((_, index) => {
-                                    const pageNumber = index + 1;
-                                    return (
-                                        <button
-                                            key={pageNumber}
-                                            onClick={() => handleReservationPageChange(pageNumber)}
-                                            className={`px-3 py-1 rounded border ${
-                                                reservationPage === pageNumber
-                                                    ? "bg-black text-white"
-                                                    : "bg-white text-black"
-                                            }`}
-                                        >
-                                            {pageNumber}
-                                        </button>
-                                    );
-                                })}
+                                {[...Array(totalReservationPages)].map(
+                                    (_, index) => {
+                                        const pageNumber = index + 1;
+                                        return (
+                                            <button
+                                                key={pageNumber}
+                                                onClick={() =>
+                                                    handleReservationPageChange(
+                                                        pageNumber,
+                                                    )
+                                                }
+                                                className={`px-3 py-1 rounded border ${
+                                                    reservationPage ===
+                                                    pageNumber
+                                                        ? "bg-black text-white"
+                                                        : "bg-white text-black"
+                                                }`}
+                                            >
+                                                {pageNumber}
+                                            </button>
+                                        );
+                                    },
+                                )}
                             </div>
                         )}
                     </div>

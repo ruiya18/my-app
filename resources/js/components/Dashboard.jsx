@@ -53,6 +53,8 @@ export default function Dashboard() {
     missing: 0
   });
 
+  const [topProducts, setTopProducts] = useState([]);
+
   const fetchBookingData = async (range) => {
     try {
       const resp = await axios.get(`/api/weekly-bookings?range=${range}`);
@@ -79,6 +81,15 @@ export default function Dashboard() {
     }
   };
 
+  const fetchTopProducts = async () => {
+    try {
+      const resp = await axios.get('/api/top-products');
+      setTopProducts(resp.data);
+    } catch (error) {
+      console.error('Error fetching top products:', error);
+    }
+  };
+
   useEffect(() => {
     axios.get('/api/dashboard-stats')
       .then(resp => setStats(resp.data))
@@ -90,6 +101,7 @@ export default function Dashboard() {
 
     fetchBookingData(bookingRange);
     fetchReservationData(reservationRange);
+    fetchTopProducts();
   }, []);
 
   useEffect(() => {
@@ -185,9 +197,58 @@ export default function Dashboard() {
         <KpiCard title="Total Reservations" value={stats.total_reservations} />
       </div>
 
-      {/* Charts Section */}
+      {/* Top Row: Equipment Status + Top Products */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Equipment Status */}
+        <div className="bg-white dark:bg-gray-800 p-4 rounded shadow">
+          <h3 className="text-lg font-semibold mb-4">Equipment Status</h3>
+          <Doughnut data={doughnutData} />
+        </div>
+        
+        {/* Top Products */}
         <div className="bg-white dark:bg-gray-800 p-4 rounded shadow lg:col-span-2">
+          <h3 className="text-lg font-semibold mb-4">Top 5 Picks Product</h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                    Product Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider flex justify-center">
+                    Total Quantity
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200">
+                {topProducts.length > 0 ? (
+                  topProducts.map((product, index) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                        {product.product_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300 text-center">
+                        {product.total_quantity}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="2" className="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-300">
+                      No data available
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Row: Bookings + Reservations */}
+      <div className="grid grid-cols-1 gap-4">
+        {/* Bookings Section */}
+        <div className="bg-white dark:bg-gray-800 p-4 rounded shadow">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Bookings</h3>
             <TimeRangeSelector 
@@ -202,28 +263,23 @@ export default function Dashboard() {
             <Line data={bookingChartData} />
           )}
         </div>
-        
-        <div className="bg-white dark:bg-gray-800 p-4 rounded shadow">
-          <h3 className="text-lg font-semibold mb-4">Equipment Status</h3>
-          <Doughnut data={doughnutData} />
-        </div>
-      </div>
 
-      {/* Reservations Section */}
-      <div className="bg-white dark:bg-gray-800 p-4 rounded shadow">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Reservations</h3>
-          <TimeRangeSelector 
-            value={reservationRange} 
-            onChange={setReservationRange} 
-            type="reservations" 
-          />
+        {/* Reservations Section */}
+        <div className="bg-white dark:bg-gray-800 p-4 rounded shadow">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Reservations</h3>
+            <TimeRangeSelector 
+              value={reservationRange} 
+              onChange={setReservationRange} 
+              type="reservations" 
+            />
+          </div>
+          {reservationData.type === 'bar' ? (
+            <Bar data={reservationChartData} />
+          ) : (
+            <Line data={reservationChartData} />
+          )}
         </div>
-        {reservationData.type === 'bar' ? (
-          <Bar data={reservationChartData} />
-        ) : (
-          <Line data={reservationChartData} />
-        )}
       </div>
     </div>
   );

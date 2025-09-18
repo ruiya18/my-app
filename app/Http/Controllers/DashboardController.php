@@ -122,4 +122,18 @@ class DashboardController extends Controller
             'data'   => $dataset
         ]);
     }
+
+    public function getTopProducts()
+    {
+        $topProducts = Booking::selectRaw('product_name, SUM(quantity) as total_quantity')
+            ->where('status', 'closed')
+            ->whereNotNull('checkin_at')
+            ->whereNotNull('checkout_at')
+            ->groupBy('product_name')
+            ->orderByDesc('total_quantity')
+            ->limit(5)
+            ->get();
+            
+        return $topProducts;
+    }
 }

@@ -80,4 +80,4 @@ Route::get('/dashboard-stats', [DashboardController::class, 'stats']);
 Route::get('/weekly-bookings', [DashboardController::class, 'weeklyBookings']);
 Route::get('/inventory-summary', [InventoryController::class, 'summary']);
 Route::get('/weekly-reservations', [ReservationController::class, 'weeklyStats']);
-
+Route::get('/top-products', [DashboardController::class, 'getTopProducts']);
