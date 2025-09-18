@@ -54,6 +54,8 @@ const ReservationEdit = () => {
     try {
       if (status === "accepted") {
         await axios.post(`/api/reservations/${id}/accept`);
+      } else if (status === "rejected") {
+        await axios.post(`/api/reservations/${id}/reject`);
       } else {
         await axios.put(`/api/reservations/${id}`, {
           quantity,

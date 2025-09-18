@@ -12,8 +12,10 @@ class ReservationRejectedMail extends Mailable
     use Queueable, SerializesModels;
 
     public $reservation;
+    public $booking;
 
-    public function __construct(Reservation $reservation)
+
+    public function __construct($reservation)
     {
         $this->reservation = $reservation;
     }
@@ -21,6 +23,9 @@ class ReservationRejectedMail extends Mailable
     public function build()
     {
         return $this->subject('Your Reservation Has Been Rejected')
-                    ->view('emails.reservation_rejected');
+                    ->view('emails.reservation_rejected')
+                    ->with([
+                        'reservation' => $this->reservation,
+                    ]);;
     }
 }
